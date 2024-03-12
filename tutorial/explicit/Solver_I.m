@@ -1,5 +1,8 @@
 clear; close all; clc;
 
+addpath("../../../matlab-bindings/");
+
+
 % Initialize and configure preCICE
 interface = precice.Participant("ParticipantI", "precice-config.xml", 0, 1);
 

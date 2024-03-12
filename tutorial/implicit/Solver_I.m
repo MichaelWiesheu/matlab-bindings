@@ -1,5 +1,8 @@
 clear; close all; clc;
 
+addpath("../../../matlab-bindings/");
+
+
 % Initialize and configure preCICE
 interface = precice.Participant("ParticipantI", "precice-config.xml", 0, 1);
 
@@ -33,7 +36,9 @@ if interface.requiresInitialData()
     interface.writeData(meshName, DataNameI, vertex_ID, I0);
 end
 interface.initialize();
-dt = interface.getMaxTimeStepSize();
+solverdt = 0.01;
+precicedt = interface.getMaxTimeStepSize();
+dt = min(solverdt, precicedt);
 
 % Start simulation
 t = t0 + dt;
@@ -43,7 +48,11 @@ while interface.isCouplingOngoing()
     if interface.requiresWritingCheckpoint()
         I0_checkpoint = I0;
         U0_checkpoint = U0;
+        t_checkpoint = t;
     end
+    precicedt = interface.getMaxTimeStepSize();
+    dt = min(solverdt, precicedt);
+    disp(['t: ' num2str(t) 9 ' solverdt: ' num2str(solverdt) 9 'precicedt: ' num2str(precicedt) 9 ' dt: ' num2str(dt)]);
 
     % Make Simulation Step
     [t_ode, I_ode] = ode45(@(t, y) f_I(t, y, U0), [t0 t], I0);
@@ -57,8 +66,8 @@ while interface.isCouplingOngoing()
     if interface.requiresReadingCheckpoint()
         I0 = I0_checkpoint;
         U0 = U0_checkpoint;
+        t = t_checkpoint;
     else
-        dt = interface.getMaxTimeStepSize();
         U0 = interface.readData(meshName, dataNameU, vertex_ID, dt);
         U = [U U0];
         I = [I I0];
@@ -66,7 +75,6 @@ while interface.isCouplingOngoing()
         t0 = t;
         t = t0 + dt;
     end
-
 end
 
 % Stop coupling
